@@ -1,225 +1,329 @@
 import 'dart:async';
 
-import 'package:bebandung/config/constant.dart';
 import 'package:bebandung/config/global_style.dart';
-import 'package:bebandung/ui/reusable_widget.dart';
+import 'package:bebandung/model/user_model.dart';
+import 'package:bebandung/model/wisata_model.dart';
+import 'package:bebandung/ui/detail_food.dart';
+import 'package:bebandung/ui/detail_wisata.dart';
 import 'package:bebandung/model/food_model.dart';
-import 'package:bebandung/ui/reusable/shimmer_loading.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class FavoritesFoodListPage extends StatefulWidget {
+  const FavoritesFoodListPage({
+    Key? key,
+  }) : super(key: key);
+
   @override
   _FavoritesFoodListPageState createState() => _FavoritesFoodListPageState();
 }
 
 class _FavoritesFoodListPageState extends State<FavoritesFoodListPage> {
-  final _shimmerLoading = ShimmerLoading();
-  final _reusableWidget = ReusableWidget();
-
-  bool _loading = true;
   Timer? _timerDummy;
 
   List<FoodModel> _foodData = [];
+  List<WisataModel> _wisataData = [];
 
-  TextEditingController _etSearch = TextEditingController();
+  final user = FirebaseAuth.instance.currentUser;
+  Users? loggedInUser;
 
   @override
   void initState() {
-    _getData();
-
     super.initState();
+    FirebaseFirestore.instance
+        .collection("users")
+        .doc(user!.uid)
+        .get()
+        .then((value) {
+      loggedInUser = Users.fromMap(value.data());
+      food = loggedInUser!.favouriteFoods!;
+      wisatas = loggedInUser!.favouriteWisata!;
+      favouriteFoods();
+      favouriteWisata();
+      setState(() {});
+    });
+    getDataFood();
+    getDataWisata();
+    setState(() {});
   }
 
   @override
   void dispose() {
     _timerDummy?.cancel();
-    _etSearch.dispose();
     super.dispose();
   }
 
-  void _getData() {
-    // this timer function is just for demo, so after 1 second, the shimmer loading will disappear and show the content
-    _timerDummy = Timer(Duration(seconds: 1), () {
-      setState(() {
-        _loading = false;
-      });
-    });
+  List<FoodModel> _favouriteFoods = [];
+  List<FoodModel> foods = [];
+  List<WisataModel> _favouriteWisata = [];
+  List<WisataModel> wisata = [];
 
-    /*
-    Image Information
-    width = 800px
-    height = 600px
-    ratio width height = 4:3
-     */
-    _foodData = [
-      FoodModel(
-          id: 8,
-          restaurantName: "Chicken Specialties",
-          name: "Chicken Rice Teriyaki",
-          image: GLOBAL_URL + "/assets/images/apps/food_delivery/food/8.jpg",
-          price: 5,
-          discount: 10,
-          rating: 4.7,
-          distance: 3.9,
-          location: "Liberty Avenue"),
-      FoodModel(
-          id: 6,
-          restaurantName: "Bread and Cookies",
-          name: "Delicious Croissant",
-          image: GLOBAL_URL + "/assets/images/apps/food_delivery/food/6.jpg",
-          price: 5,
-          discount: 0,
-          rating: 4.8,
-          distance: 0.9,
-          location: "Mapple Street"),
-      FoodModel(
-          id: 7,
-          restaurantName: "Taco Salad Beef Classic",
-          name: "Awesome Health",
-          image: GLOBAL_URL + "/assets/images/apps/food_delivery/food/7.jpg",
-          price: 4.9,
-          discount: 10,
-          rating: 4.9,
-          distance: 1.1,
-          location: "Fenimore Street"),
-      FoodModel(
-          id: 5,
-          restaurantName: "Italian Food",
-          name: "Chicken Penne With Tomato",
-          image: GLOBAL_URL + "/assets/images/apps/food_delivery/food/5.jpg",
-          price: 6.5,
-          discount: 20,
-          rating: 4.6,
-          distance: 0.9,
-          location: "New York Avenue"),
-      FoodModel(
-          id: 4,
-          restaurantName: "Steam Boat Lovers",
-          name: "Seafood shabu-shabu",
-          image: GLOBAL_URL + "/assets/images/apps/food_delivery/food/4.jpg",
-          price: 6,
-          discount: 20,
-          rating: 4.9,
-          distance: 0.7,
-          location: "Lefferts Avenue"),
-      FoodModel(
-          id: 3,
-          restaurantName: "Salad Stop",
-          name: "Sesame Salad",
-          image: GLOBAL_URL + "/assets/images/apps/food_delivery/food/3.jpg",
-          price: 4.8,
-          discount: 10,
-          rating: 4.3,
-          distance: 0.7,
-          location: "Empire Boulevard"),
-      FoodModel(
-          id: 2,
-          restaurantName: "Beef Lovers",
-          name: "Beef Yakiniku",
-          image: GLOBAL_URL + "/assets/images/apps/food_delivery/food/2.jpg",
-          price: 3.6,
-          discount: 20,
-          rating: 5,
-          distance: 0.6,
-          location: "Montgomery Street"),
-      FoodModel(
-          id: 1,
-          restaurantName: "Mr. Hungry",
-          name: "Hainam Chicken Rice",
-          image: GLOBAL_URL + "/assets/images/apps/food_delivery/food/1.jpg",
-          price: 5,
-          discount: 50,
-          rating: 4.9,
-          distance: 0.4,
-          location: "Crown Street"),
-    ];
+  List food = [];
+  List wisatas = [];
+
+  QuerySnapshot? _tempData;
+  QuerySnapshot? _tempData2;
+
+  void getDataFood() async {
+    _tempData = await FirebaseFirestore.instance.collection('foods').get();
+    for (int i = 0; i < _tempData!.docs.length; i++) {
+      foods.add(FoodModel.fromMap(_tempData!.docs[i]));
+    }
+    setState(() {});
+  }
+
+  void favouriteFoods() {
+    for (int i = 0; i < food.length; i++) {
+      final suggestions = foods.where((element) {
+        final foodName = element.name;
+        final input = food[i];
+
+        return foodName!.contains(input);
+      }).toList();
+      setState(() => _favouriteFoods.add(suggestions.first));
+    }
+  }
+
+  void getDataWisata() async {
+    _tempData2 = await FirebaseFirestore.instance.collection('wisata').get();
+    for (int i = 0; i < _tempData2!.docs.length; i++) {
+      wisata.add(WisataModel.fromMap(_tempData2!.docs[i]));
+    }
+    setState(() {});
+  }
+
+  void favouriteWisata() {
+    for (int i = 0; i < wisatas.length; i++) {
+      final suggestions = wisata.where((element) {
+        final wisataName = element.name;
+        final input = wisatas[i];
+
+        return wisataName!.contains(input);
+      }).toList();
+      setState(() => _favouriteWisata.add(suggestions.first));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
           iconTheme: IconThemeData(
             color: GlobalStyle.appBarIconThemeColor,
           ),
           systemOverlayStyle: GlobalStyle.appBarSystemOverlayStyle,
           centerTitle: true,
-          title: Text('Favorites Food', style: GlobalStyle.appBarTitle),
+          title: Text('Favorites', style: GlobalStyle.appBarTitle),
           backgroundColor: GlobalStyle.appBarBackgroundColor,
-          bottom: PreferredSize(
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border(
-                    bottom: BorderSide(
-                  color: Colors.grey[100]!,
-                  width: 1.0,
-                )),
+          bottom: const TabBar(
+            labelColor: Colors.black,
+            tabs: [
+              Tab(
+                text: 'Foods',
               ),
-              padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
-              height: kToolbarHeight,
-              child: TextField(
-                controller: _etSearch,
-                maxLines: 1,
-                style: TextStyle(fontSize: 16, color: Colors.grey[500]),
-                onChanged: (textValue) {
+              Tab(
+                text: 'Wisata',
+              )
+            ],
+          ),
+          actions: [
+            IconButton(
+                onPressed: () {
+                  _favouriteFoods.clear();
+                  _favouriteWisata.clear();
+                  FirebaseFirestore.instance
+                      .collection("users")
+                      .doc(user!.uid)
+                      .get()
+                      .then((value) {
+                    loggedInUser = Users.fromMap(value.data());
+                    food = loggedInUser!.favouriteFoods!;
+                    wisatas = loggedInUser!.favouriteWisata!;
+                    favouriteFoods();
+                    favouriteWisata();
+                    setState(() {});
+                  });
+                  getDataFood();
+                  getDataWisata();
                   setState(() {});
                 },
-                decoration: InputDecoration(
-                  fillColor: Colors.grey[100],
-                  filled: true,
-                  hintText: 'Search your favorites food',
-                  hintStyle: TextStyle(fontSize: 16, color: Colors.grey[500]),
-                  prefixIcon:
-                      Icon(Icons.search, color: Colors.grey[500], size: 18),
-                  suffixIcon: (_etSearch.text == '')
-                      ? null
-                      : GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _etSearch = TextEditingController(text: '');
-                            });
-                          },
-                          child: Icon(
-                            Icons.close,
-                            color: Colors.grey[500],
-                            size: 18,
-                          )),
-                  focusedBorder: UnderlineInputBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(5.0)),
-                      borderSide: BorderSide(color: Colors.grey[200]!)),
-                  enabledBorder: UnderlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(5.0)),
-                    borderSide: BorderSide(color: Colors.grey[200]!),
-                  ),
-                ),
-              ),
-            ),
-            preferredSize: Size.fromHeight(kToolbarHeight),
-          )),
-      body: RefreshIndicator(
-        onRefresh: refreshData,
-        child: (_loading == true)
-            ? _shimmerLoading.buildShimmerContent()
-            : ListView.builder(
-                itemCount: _foodData.length,
-                padding: EdgeInsets.symmetric(vertical: 0),
-                physics: AlwaysScrollableScrollPhysics(),
-                itemBuilder: (BuildContext context, int index) {
-                  return _reusableWidget.buildFoodList(
-                      context, index, _foodData);
-                },
-              ),
+                icon: Icon(Icons.refresh_rounded))
+          ],
+        ),
+        body: TabBarView(children: [
+          _listFavouriteFood(_favouriteFoods),
+          _listFavouriteWisata(_favouriteWisata),
+        ]),
       ),
-      floatingActionButton: _reusableWidget.fabCart(context),
     );
   }
 
-  Future refreshData() async {
-    setState(() {
-      _foodData.clear();
-      _loading = true;
-      _getData();
-    });
+  Widget _listFavouriteFood(List<FoodModel> datas) {
+    return datas.isEmpty
+        ? Center(
+            child: Text('No Favourites Available'),
+          )
+        : Column(
+            children: [
+              const SizedBox(
+                height: 12,
+              ),
+              Expanded(
+                child: ListView.separated(
+                    itemBuilder: (context, index) {
+                      final data = datas[index];
+                      return ListTile(
+                        leading: Container(
+                          width: 50,
+                          height: 50,
+                          child: ClipPath(
+                            child: ClipRRect(
+                              child: CachedNetworkImage(
+                                imageUrl: data.image!,
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) =>
+                                    const CircularProgressIndicator(),
+                              ),
+                            ),
+                          ),
+                        ),
+                        title: Text(
+                          data.name!,
+                          style: const TextStyle(color: Colors.black),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: ElevatedButton(
+                            onPressed: () {
+                              List food = [];
+                              food.add(data.name);
+                              _favouriteFoods.remove(data);
+                              FirebaseFirestore.instance
+                                  .collection('users')
+                                  .doc(loggedInUser!.id)
+                                  .update({
+                                "favouriteFoods": FieldValue.arrayRemove(food)
+                              });
+                              setState(() {
+                                FirebaseFirestore.instance
+                                    .collection("users")
+                                    .doc(user!.uid)
+                                    .get()
+                                    .then((value) {
+                                  loggedInUser = Users.fromMap(value.data());
+                                  setState(() {});
+                                });
+                              });
+                            },
+                            style: ButtonStyle(
+                                backgroundColor:
+                                    MaterialStateProperty.all(Colors.orange)),
+                            child: const Text(
+                              'Remove',
+                              style: TextStyle(
+                                  color: Colors.black87, fontSize: 16),
+                            )),
+                        onTap: () {
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => DetailFoodPage(
+                                        food: data,
+                                      )));
+                        },
+                      );
+                    },
+                    separatorBuilder: (context, index) => const Divider(),
+                    itemCount: datas.length),
+              ),
+            ],
+          );
+  }
+
+  Widget _listFavouriteWisata(List<WisataModel> datas) {
+    return datas.isEmpty
+        ? Center(
+            child: Text('No Favourites Available'),
+          )
+        : Column(
+            children: [
+              const SizedBox(
+                height: 12,
+              ),
+              Expanded(
+                child: ListView.separated(
+                    itemBuilder: (context, index) {
+                      final data = datas[index];
+                      return ListTile(
+                        leading: Container(
+                          width: 50,
+                          height: 50,
+                          child: ClipPath(
+                            child: ClipRRect(
+                              child: CachedNetworkImage(
+                                imageUrl: data.image!,
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) =>
+                                    const CircularProgressIndicator(),
+                              ),
+                            ),
+                          ),
+                        ),
+                        title: Text(
+                          data.name!,
+                          style: const TextStyle(color: Colors.black),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: ElevatedButton(
+                            onPressed: () {
+                              List food = [];
+                              _favouriteWisata.remove(data);
+                              food.add(data.name);
+                              FirebaseFirestore.instance
+                                  .collection('users')
+                                  .doc(loggedInUser!.id)
+                                  .update({
+                                "favouriteWisata": FieldValue.arrayRemove(food)
+                              });
+                              setState(() {
+                                FirebaseFirestore.instance
+                                    .collection("users")
+                                    .doc(user!.uid)
+                                    .get()
+                                    .then((value) {
+                                  loggedInUser = Users.fromMap(value.data());
+                                  setState(() {});
+                                });
+                              });
+                            },
+                            style: ButtonStyle(
+                                backgroundColor:
+                                    MaterialStateProperty.all(Colors.orange)),
+                            child: const Text(
+                              'Remove',
+                              style: TextStyle(
+                                  color: Colors.black87, fontSize: 16),
+                            )),
+                        onTap: () {
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => DetailRestaurantPage(
+                                        wisata: data,
+                                      )));
+                        },
+                      );
+                    },
+                    separatorBuilder: (context, index) => const Divider(),
+                    itemCount: datas.length),
+              ),
+            ],
+          );
   }
 }

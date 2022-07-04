@@ -2,27 +2,30 @@ import 'dart:async';
 
 import 'package:bebandung/config/global_style.dart';
 import 'package:bebandung/model/user_model.dart';
-import 'package:bebandung/ui/detail_food.dart';
+import 'package:bebandung/ui/detail_wisata.dart';
 import 'package:bebandung/ui/reusable_widget.dart';
-import 'package:bebandung/model/food_model.dart';
+import 'package:bebandung/model/wisata_model.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-class FoodListPage extends StatefulWidget {
+class RestaurantListPage extends StatefulWidget {
   final String title;
   final Users user;
-  const FoodListPage({Key? key, this.title = 'Kuliner', required this.user})
+  const RestaurantListPage(
+      {Key? key, this.title = 'Wisata', required this.user})
       : super(key: key);
 
   @override
-  _FoodListPageState createState() => _FoodListPageState();
+  _RestaurantListPageState createState() => _RestaurantListPageState();
 }
 
-class _FoodListPageState extends State<FoodListPage> {
+class _RestaurantListPageState extends State<RestaurantListPage> {
   final _reusableWidget = ReusableWidget();
 
   Timer? _timerDummy;
+
+  List<WisataModel> _restaurantData = [];
 
   @override
   void initState() {
@@ -35,49 +38,49 @@ class _FoodListPageState extends State<FoodListPage> {
     super.dispose();
   }
 
-  Stream<List<FoodModel>> readFoods() => FirebaseFirestore.instance
-      .collection("foods")
+  Stream<List<WisataModel>> readWisata() => FirebaseFirestore.instance
+      .collection("wisata")
       .snapshots()
-      .map((snapshots) =>
-          snapshots.docs.map((doc) => FoodModel.fromMap(doc.data())).toList());
+      .map((snapshots) => snapshots.docs
+          .map((doc) => WisataModel.fromMap(doc.data()))
+          .toList());
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        iconTheme: IconThemeData(
-          color: GlobalStyle.appBarIconThemeColor,
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          iconTheme: IconThemeData(
+            color: GlobalStyle.appBarIconThemeColor,
+          ),
+          systemOverlayStyle: GlobalStyle.appBarSystemOverlayStyle,
+          centerTitle: true,
+          title: Text(widget.title, style: GlobalStyle.appBarTitle),
+          backgroundColor: GlobalStyle.appBarBackgroundColor,
+          bottom: _reusableWidget.bottomAppBar(),
         ),
-        systemOverlayStyle: GlobalStyle.appBarSystemOverlayStyle,
-        centerTitle: true,
-        title: Text(widget.title, style: GlobalStyle.appBarTitle),
-        backgroundColor: GlobalStyle.appBarBackgroundColor,
-        bottom: _reusableWidget.bottomAppBar(),
-      ),
-      body: StreamBuilder<List<FoodModel>>(
-          stream: readFoods(),
-          builder: (context, snapshot) {
-            if (snapshot.hasData) {
-              final food = snapshot.data!;
-              return _listFood(food);
-            } else if (snapshot.hasError) {
-              return Center(
-                child: Text(snapshot.error.toString()),
-              );
-            } else {
-              return Center(
-                child: CircularProgressIndicator(),
-              );
-            }
-          }),
-    );
+        body: StreamBuilder<List<WisataModel>>(
+            stream: readWisata(),
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+                final wisata = snapshot.data;
+                return _listWisata(wisata!);
+              } else if (snapshot.hasError) {
+                return Center(
+                  child: Text(snapshot.error.toString()),
+                );
+              } else {
+                return Center(
+                  child: CircularProgressIndicator(),
+                );
+              }
+            }));
   }
 
-  Widget _listFood(List<FoodModel> datas) {
+  Widget _listWisata(List<WisataModel> datas) {
     return datas.isEmpty
         ? Center(
-            child: Text('No Foods Available'),
+            child: Text('No Wisata Available'),
           )
         : Column(
             children: [
@@ -110,7 +113,7 @@ class _FoodListPageState extends State<FoodListPage> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         subtitle: Text(
-                          data.description!,
+                          data.location!,
                           style: const TextStyle(color: Colors.grey),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -120,8 +123,8 @@ class _FoodListPageState extends State<FoodListPage> {
                           Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => DetailFoodPage(
-                                        food: data,
+                                  builder: (context) => DetailRestaurantPage(
+                                        wisata: data,
                                       )));
                         },
                       );

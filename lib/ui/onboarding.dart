@@ -13,29 +13,15 @@ class OnBoardingPage extends StatefulWidget {
 class _OnBoardingPageState extends State<OnBoardingPage> {
   final pages = [
     SkOnboardingModel(
-        title: 'Choose restaurant and food',
-        description: 'Choose the restaurant and food you want to buy',
+        title: 'Find destination and food',
+        description: 'Choose the destination and food you want visit',
         titleColor: Colors.black,
         descripColor: Color(0xFF929794),
         imageFromUrl: GLOBAL_URL +
             '/assets/images/apps/food_delivery/onboarding/choose.png'),
     SkOnboardingModel(
-        title: 'Delivery',
-        description: 'Choose the delivery and then pay the food',
-        titleColor: Colors.black,
-        descripColor: Color(0xFF929794),
-        imageFromUrl: GLOBAL_URL +
-            '/assets/images/apps/food_delivery/onboarding/delivery.png'),
-    SkOnboardingModel(
-        title: 'Food Arrived',
-        description: 'Wait until the food comes to your place',
-        titleColor: Colors.black,
-        descripColor: Color(0xFF929794),
-        imageFromUrl: GLOBAL_URL +
-            '/assets/images/apps/food_delivery/onboarding/arrived.png'),
-    SkOnboardingModel(
         title: 'Enjoy',
-        description: 'Enjoy your food at home',
+        description: 'Enjoy destination information at home',
         titleColor: Colors.black,
         descripColor: Color(0xFF929794),
         imageFromUrl: GLOBAL_URL +

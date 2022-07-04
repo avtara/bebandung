@@ -1,50 +1,61 @@
-import 'package:bebandung/ui/detail_food.dart';
-import 'package:bebandung/ui/detail_restaurant.dart';
-import 'package:bebandung/ui/order_history.dart';
-import 'package:bebandung/ui/category_menu.dart';
+import 'dart:convert';
+
+import 'package:bebandung/model/user_model.dart';
+import 'package:bebandung/ui/food_list.dart';
 import 'package:bebandung/ui/favorites_food_list.dart';
-import 'package:bebandung/ui/search_restaurant.dart';
-import 'package:bebandung/ui/restaurant_list.dart';
+import 'package:bebandung/ui/search_screen.dart';
+import 'package:bebandung/ui/wisata_list.dart';
 import 'package:bebandung/ui/user_profile.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:bebandung/config/constant.dart';
 import 'package:bebandung/config/global_style.dart';
 import 'package:bebandung/ui/reusable/cache_image_network.dart';
-import 'package:bebandung/ui/reusable/global_function.dart';
 import 'package:bebandung/model/feature/banner_slider_model.dart';
 import 'package:bebandung/model/feature/category_model.dart';
 import 'package:bebandung/model/food_model.dart';
-import 'package:bebandung/model/restaurant_model.dart';
+import 'package:bebandung/model/wisata_model.dart';
 import 'package:bebandung/ui/reusable_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
 class HomePage extends StatefulWidget {
+  const HomePage({Key? key}) : super(key: key);
+
   @override
   _HomePageState createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
   // initialize global function and reusable widget
-  final _globalFunction = GlobalFunction();
   final _reusableWidget = ReusableWidget();
 
   int _currentImageSlider = 0;
   List<BannerSliderModel> _bannerData = [];
   List<CategoryModel> _categoryData = [];
-  List<RestaurantModel> _nearbyFoodData = [];
-  List<RestaurantModel> _orderAgainData = [];
-  List<FoodModel> _foodDiscountData = [];
-  List<RestaurantModel> _moreRestaurantData = [];
+  List<FoodModel> _foodData = [];
+  List<WisataModel> _moreRestaurantData = [];
 
-  List<String> _addressData = [];
-  String _address = 'Michelia Home Address';
+  List _get = [];
+
+  final user = FirebaseAuth.instance.currentUser;
+  Users? loggedInUser;
 
   @override
   void initState() {
     _getData();
-
     super.initState();
+    FirebaseFirestore.instance
+        .collection("users")
+        .doc(user!.uid)
+        .get()
+        .then((value) => loggedInUser = Users.fromMap(value.data()));
+    Future.delayed(Duration.zero, () {
+      getNews();
+    });
   }
 
   @override
@@ -52,12 +63,37 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  void _getData() {
-    _addressData.add('Michelia Home Address');
-    _addressData.add('Office Address');
-    _addressData.add('Apartment Address');
-    _addressData.add('Mom Address');
+  Stream<List<FoodModel>> readFoods() => FirebaseFirestore.instance
+      .collection("foods")
+      .snapshots()
+      .map((snapshots) =>
+          snapshots.docs.map((doc) => FoodModel.fromMap(doc.data())).toList());
 
+  Stream<List<WisataModel>> readWisata() => FirebaseFirestore.instance
+      .collection("wisata")
+      .snapshots()
+      .map((snapshots) => snapshots.docs
+          .map((doc) => WisataModel.fromMap(doc.data()))
+          .toList());
+
+  Future getNews() async {
+    const String baseUrl = 'https://newsapi.org/v2';
+    const String apiKey = 'apiKey=f8fd87d48cf746e0a817a4f7a21bafe4';
+    try {
+      const url = '$baseUrl/everything?$apiKey&q=bandung&language=id';
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _get = data['articles'];
+        });
+      }
+    } catch (e) {
+      throw e;
+    }
+  }
+
+  void _getData() {
     /*
     Banner Data Information
     width = 800px
@@ -93,182 +129,6 @@ class _HomePageState extends State<HomePage> {
         name: 'Coming Soon',
         image: GLOBAL_URL +
             '/assets/images/apps/food_delivery/category/best.png'));
-
-    /*
-    Image Information
-    width = 800px
-    height = 600px
-    ratio width height = 4:3
-     */
-    _nearbyFoodData = [
-      RestaurantModel(
-          id: 1,
-          name: "Diaswan Chicken",
-          tag: "Chicken, Rice",
-          image: NO_IMAGE_URL,
-          rating: 4.9,
-          distance: 0.4,
-          promo: '90% Off | Get Gift Voucher If You Buy 4 pcs',
-          location: "Dramaga Street II"),
-      RestaurantModel(
-          id: 2,
-          name: "Nasi Uduk Bu Joko",
-          tag: "Rice, Indonesian",
-          image: NO_IMAGE_URL,
-          rating: 5,
-          distance: 0.6,
-          promo: 'Buy 1 Get 1',
-          location: "Dramaga Raya"),
-      RestaurantModel(
-          id: 3,
-          name: "Salad Sehat",
-          tag: "Healthy Food, Salad",
-          image: NO_IMAGE_URL,
-          rating: 4.3,
-          distance: 0.7,
-          promo: '',
-          location: "Dramaga Raya"),
-      RestaurantModel(
-          id: 4,
-          name: "Dimsum",
-          tag: "Japanese, Fresh, Steam",
-          image: NO_IMAGE_URL,
-          rating: 4.9,
-          distance: 0.7,
-          promo: '20% Off',
-          location: "Dramaga Street III"),
-    ];
-
-    /*
-    Image Information
-    width = 800px
-    height = 600px
-    ratio width height = 4:3
-     */
-    _orderAgainData = [
-      RestaurantModel(
-          id: 1,
-          name: "Diaswan Chicken",
-          tag: "Chicken, Rice",
-          image: NO_IMAGE_URL,
-          rating: 4.9,
-          distance: 0.4,
-          promo: '90% Off | Get Gift Voucher If You Buy 4 pcs',
-          location: "Dramaga Street II"),
-      RestaurantModel(
-          id: 2,
-          name: "Beef Lovers",
-          tag: "Beef, Yakiniku, Japanese Food",
-          image: NO_IMAGE_URL,
-          rating: 5,
-          distance: 0.6,
-          promo: 'Buy 1 Get 1',
-          location: "Botani Square Mall Bogor"),
-      RestaurantModel(
-          id: 3,
-          name: "Salad Stop",
-          tag: "Healthy Food, Salad",
-          image: NO_IMAGE_URL,
-          rating: 4.3,
-          distance: 0.7,
-          promo: '',
-          location: "Botani Square Mall Bogor"),
-      RestaurantModel(
-          id: 4,
-          name: "Steam Boat Lovers",
-          tag: "Hot, Fresh, Steam",
-          image: NO_IMAGE_URL,
-          rating: 4.9,
-          distance: 0.7,
-          promo: '20% Off',
-          location: "Botani Square Mall Bogor"),
-    ];
-
-    /*
-    Image Information
-    width = 800px
-    height = 600px
-    ratio width height = 4:3
-     */
-    _foodDiscountData = [
-      FoodModel(
-          id: 4,
-          restaurantName: "Steam Boat Lovers",
-          name: "Seafood shabu-shabu",
-          image: NO_IMAGE_URL,
-          price: 40000,
-          discount: 15,
-          location: "Dramaga Street V"),
-      FoodModel(
-          id: 3,
-          restaurantName: "Salad Stop",
-          name: "Sesame Salad",
-          image: NO_IMAGE_URL,
-          price: 22500,
-          discount: 5,
-          location: "Dramaga Street III"),
-      FoodModel(
-          id: 2,
-          restaurantName: "Beef Lovers",
-          name: "Beef Yakiniku",
-          image: NO_IMAGE_URL,
-          price: 30000,
-          discount: 45,
-          location: "Dramaga Street IV"),
-      FoodModel(
-          id: 1,
-          restaurantName: "Mr. Hungry",
-          name: "Hainam Chicken Rice",
-          image: NO_IMAGE_URL,
-          price: 21000,
-          discount: 10,
-          location: "Dramaga Street I"),
-    ];
-
-    /*
-    Image Information
-    width = 800px
-    height = 600px
-    ratio width height = 4:3
-     */
-    _moreRestaurantData = [
-      RestaurantModel(
-          id: 2,
-          name: "Beef Lovers",
-          tag: "Beef, Yakiniku, Japanese Food",
-          image: NO_IMAGE_URL,
-          rating: 5,
-          distance: 0.6,
-          promo: 'Buy 1 Get 1',
-          location: "BTM Mall"),
-      RestaurantModel(
-          id: 1,
-          name: "Diaswan Chicken",
-          tag: "Chicken, Rice",
-          image: NO_IMAGE_URL,
-          rating: 4.9,
-          distance: 0.4,
-          promo: '90% Off | Get Gift Voucher If You Buy 4 pcs',
-          location: "Dramaga Street II"),
-      RestaurantModel(
-          id: 3,
-          name: "Salad Stop",
-          tag: "Healthy Food, Salad",
-          image: NO_IMAGE_URL,
-          rating: 4.3,
-          distance: 0.7,
-          promo: '',
-          location: "Botani Square Mall Bogor"),
-      RestaurantModel(
-          id: 4,
-          name: "Italian Food",
-          tag: "Penne, Western Food",
-          image: NO_IMAGE_URL,
-          rating: 4.6,
-          distance: 0.9,
-          promo: '',
-          location: "Dramaga Raya I"),
-    ];
   }
 
   @override
@@ -333,7 +193,7 @@ class _HomePageState extends State<HomePage> {
                     Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (context) => SearchRestaurantPage()));
+                            builder: (context) => SearchAddressPage()));
                     // Fluttertoast.showToast(
                     //     msg: 'Not Implemented',
                     //     toastLength: Toast.LENGTH_SHORT);
@@ -371,10 +231,11 @@ class _HomePageState extends State<HomePage> {
               padding: EdgeInsets.only(right: 16),
               child: GestureDetector(
                 onTap: () {
-                  Navigator.push(
-                      context,
+                  Navigator.pushAndRemoveUntil(
+                      (context),
                       MaterialPageRoute(
-                          builder: (context) => UserProfilePage()));
+                          builder: (context) => UserProfilePage()),
+                      (route) => false);
                   // Fluttertoast.showToast(
                   //     msg: 'Not Implemented', toastLength: Toast.LENGTH_SHORT);
                 },
@@ -388,8 +249,8 @@ class _HomePageState extends State<HomePage> {
           _buildHomeBanner(),
           SizedBox(height: 16),
           _buildMenu(),
-          _buildNearbyFood(boxImageSize),
-          _buildOrderAgain(boxImageSize),
+          _buildWisata(boxImageSize),
+          _buildFoods(boxImageSize),
         ],
       ),
     );
@@ -399,30 +260,68 @@ class _HomePageState extends State<HomePage> {
     return Column(
       children: [
         SizedBox(height: 12),
-        CarouselSlider(
-          items: _bannerData
-              .map((item) => Container(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.all(Radius.circular(8)),
-                      child: buildCacheNetworkImage(
-                          url: item.image,
-                          width: 0.87 * MediaQuery.of(context).size.width),
-                    ),
-                  ))
-              .toList(),
-          options: CarouselOptions(
-              aspectRatio: 2.88,
-              viewportFraction: 0.9,
-              autoPlay: true,
-              autoPlayInterval: Duration(seconds: 4),
-              autoPlayAnimationDuration: Duration(milliseconds: 300),
-              enlargeCenterPage: false,
-              onPageChanged: (index, reason) {
-                setState(() {
-                  _currentImageSlider = index;
-                });
-              }),
-        ),
+        _get.isEmpty
+            ? Center(
+                child: Text('No News Available'),
+              )
+            : CarouselSlider(
+                items: _get
+                    .map((item) => Stack(
+                          children: [
+                            GestureDetector(
+                              onTap: () async {
+                                Uri newsUrl = Uri.parse(item['url']);
+                                if (await canLaunchUrl(newsUrl)) {
+                                  await launchUrl(newsUrl);
+                                }
+                              },
+                              child: Stack(
+                                alignment: Alignment.bottomLeft,
+                                children: [
+                                  Container(
+                                    child: ClipRRect(
+                                      borderRadius:
+                                          BorderRadius.all(Radius.circular(8)),
+                                      child: buildCacheNetworkImage(
+                                          url: item['urlToImage'],
+                                          width: 0.87 *
+                                              MediaQuery.of(context)
+                                                  .size
+                                                  .width),
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                        bottom: 15, left: 15, right: 15),
+                                    child: Text(
+                                      item['title'],
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 18,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  )
+                                ],
+                              ),
+                            ),
+                          ],
+                        ))
+                    .toList(),
+                options: CarouselOptions(
+                    aspectRatio: 2.88,
+                    viewportFraction: 0.9,
+                    autoPlay: true,
+                    autoPlayInterval: Duration(seconds: 4),
+                    autoPlayAnimationDuration: Duration(milliseconds: 300),
+                    enlargeCenterPage: false,
+                    onPageChanged: (index, reason) {
+                      setState(() {
+                        _currentImageSlider = index;
+                      });
+                    }),
+              ),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: _bannerData.map((item) {
@@ -459,12 +358,21 @@ class _HomePageState extends State<HomePage> {
               if (_categoryData[index].name == "Coming Soon") {
                 Fluttertoast.showToast(
                     msg: 'Coming Soon!', toastLength: Toast.LENGTH_SHORT);
+              } else if (_categoryData[index].name == "Kuliner") {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => FoodListPage(
+                              user: loggedInUser!,
+                            )));
               } else {
                 Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => CategoryMenuPage(
-                            title: _categoryData[index].name)));
+                        builder: (context) => RestaurantListPage(
+                              title: _categoryData[index].name,
+                              user: loggedInUser!,
+                            )));
               }
             },
             child: Column(children: [
@@ -492,7 +400,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildNearbyFood(boxImageSize) {
+  Widget _buildWisata(boxImageSize) {
     return Column(
       children: [
         Container(
@@ -506,10 +414,10 @@ class _HomePageState extends State<HomePage> {
                   Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) =>
-                              RestaurantListPage(title: 'Wisata')));
-                  // Fluttertoast.showToast(
-                  //     msg: 'Not Implemented', toastLength: Toast.LENGTH_SHORT);
+                          builder: (context) => RestaurantListPage(
+                                title: 'Wisata',
+                                user: loggedInUser!,
+                              )));
                 },
                 child: Text('View All',
                     style: GlobalStyle.viewAll, textAlign: TextAlign.end),
@@ -517,23 +425,38 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
         ),
-        Container(
-            margin: EdgeInsets.only(top: 8),
-            height: boxImageSize * GlobalStyle.cardHeightMultiplication,
-            child: ListView.builder(
-              padding: EdgeInsets.symmetric(horizontal: 12),
-              scrollDirection: Axis.horizontal,
-              itemCount: _nearbyFoodData.length,
-              itemBuilder: (BuildContext context, int index) {
-                return _reusableWidget.buildHorizontalListCard(
-                    context, _nearbyFoodData[index]);
-              },
-            )),
+        StreamBuilder<List<WisataModel>>(
+            stream: readWisata(),
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+                final wisata = snapshot.data;
+                return Container(
+                    margin: EdgeInsets.only(top: 8),
+                    height: boxImageSize * GlobalStyle.cardHeightMultiplication,
+                    child: ListView.builder(
+                      padding: EdgeInsets.symmetric(horizontal: 12),
+                      scrollDirection: Axis.horizontal,
+                      itemCount: wisata!.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        return _reusableWidget.buildHorizontalListCard(
+                            context, wisata[index], 'restaurant', loggedInUser);
+                      },
+                    ));
+              } else if (snapshot.hasError) {
+                return Center(
+                  child: Text(snapshot.error.toString()),
+                );
+              } else {
+                return Center(
+                  child: CircularProgressIndicator(),
+                );
+              }
+            }),
       ],
     );
   }
 
-  Widget _buildOrderAgain(boxImageSize) {
+  Widget _buildFoods(boxImageSize) {
     return Column(
       children: [
         Container(
@@ -544,9 +467,13 @@ class _HomePageState extends State<HomePage> {
               Text('Kuliner', style: GlobalStyle.horizontalTitle),
               GestureDetector(
                 onTap: () {
-                  // Navigator.push(context, MaterialPageRoute(builder: (context) => RestaurantListPage(title: 'Order Again')));
-                  Fluttertoast.showToast(
-                      msg: 'Not Implemented', toastLength: Toast.LENGTH_SHORT);
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => FoodListPage(
+                                title: 'Food',
+                                user: loggedInUser!,
+                              )));
                 },
                 child: Text('View All',
                     style: GlobalStyle.viewAll, textAlign: TextAlign.end),
@@ -554,99 +481,34 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
         ),
-        Container(
-            margin: EdgeInsets.only(top: 8),
-            height: boxImageSize * GlobalStyle.cardHeightMultiplication,
-            child: ListView.builder(
-              padding: EdgeInsets.symmetric(horizontal: 12),
-              scrollDirection: Axis.horizontal,
-              itemCount: _orderAgainData.length,
-              itemBuilder: (BuildContext context, int index) {
-                return _reusableWidget.buildHorizontalListCard(
-                    context, _orderAgainData[index]);
-              },
-            )),
+        StreamBuilder<List<FoodModel>>(
+            stream: readFoods(),
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+                final food = snapshot.data!;
+                return Container(
+                    margin: EdgeInsets.only(top: 8),
+                    height: boxImageSize * GlobalStyle.cardHeightMultiplication,
+                    child: ListView.builder(
+                      padding: EdgeInsets.symmetric(horizontal: 12),
+                      scrollDirection: Axis.horizontal,
+                      itemCount: food.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        return _reusableWidget.buildHorizontalListCard(
+                            context, food[index], 'food', loggedInUser);
+                      },
+                    ));
+              } else if (snapshot.hasError) {
+                return Center(
+                  child: Text(snapshot.error.toString()),
+                );
+              } else {
+                return Center(
+                  child: CircularProgressIndicator(),
+                );
+              }
+            }),
       ],
-    );
-  }
-
-  Widget _buildFoodCard(data) {
-    final double imageWidth = (MediaQuery.of(context).size.width / 2.3);
-    final double imageheight = (MediaQuery.of(context).size.width / 3.07);
-    return Container(
-      width: imageWidth,
-      child: Card(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(6),
-        ),
-        elevation: 2,
-        color: Colors.white,
-        child: GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onTap: () {
-            Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => DetailRestaurantPage()));
-            // Fluttertoast.showToast(
-            //     msg: 'Not Implemented', toastLength: Toast.LENGTH_SHORT);
-            Navigator.push(context,
-                MaterialPageRoute(builder: (context) => DetailFoodPage()));
-          },
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              ClipRRect(
-                  borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(10),
-                      topRight: Radius.circular(6)),
-                  child: buildCacheNetworkImage(
-                      width: imageWidth, height: imageheight, url: data.image)),
-              Container(
-                margin: EdgeInsets.all(8),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      height: 36,
-                      child: Text(data.name,
-                          style: GlobalStyle.cardTitle,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis),
-                    ),
-                    SizedBox(height: 6),
-                    Text(data.restaurantName + ' - ' + data.location,
-                        style: GlobalStyle.textRestaurantNameSmall,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
-                    SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Text(
-                            'Rp.' +
-                                _globalFunction.removeDecimalZeroFormat(
-                                    ((100 - data.discount) * data.price / 100)),
-                            style: GlobalStyle.textPrice),
-                        data.discount != 0
-                            ? SizedBox(width: 6)
-                            : SizedBox.shrink(),
-                        data.discount != 0
-                            ? Text(
-                                'Rp.' +
-                                    _globalFunction
-                                        .removeDecimalZeroFormat(data.price),
-                                style: GlobalStyle.textPriceLineThrough)
-                            : SizedBox.shrink()
-                      ],
-                    )
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

@@ -59,6 +59,7 @@ class _SplashScreenPageState extends State<SplashScreenPage> {
     if (_second != 0) {
       _startTimer();
     }
+
     super.initState();
   }
 

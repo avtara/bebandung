@@ -1,22 +1,45 @@
 class FoodModel {
-  late int id;
-  late String name;
-  late String restaurantName;
-  late double price;
-  late String image;
-  double? rating;
-  double? distance;
-  late int discount;
-  late String location;
+  int? id;
+  String? name;
+  List? restaurantName;
+  int? price;
+  String? image;
+  String? rating;
+  int? discount;
+  String? description;
 
   FoodModel(
-      {required this.id,
-      required this.name,
-      required this.restaurantName,
-      required this.price,
-      required this.image,
+      {this.id,
+      this.name,
+      this.restaurantName,
+      this.price,
+      this.image,
       this.rating,
-      this.distance,
-      required this.discount,
-      required this.location});
+      this.discount,
+      this.description});
+
+  factory FoodModel.fromMap(map) {
+    return FoodModel(
+        id: map['id'],
+        name: map['name'],
+        restaurantName: map['restaurantName'],
+        price: map['price'],
+        image: map['image'].toString(),
+        rating: map['rating'].toString(),
+        discount: map['discount'],
+        description: map['description']);
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'restaurantName': restaurantName,
+      'price': price,
+      'image': image,
+      'rating': rating,
+      'discount': discount,
+      'description': description
+    };
+  }
 }

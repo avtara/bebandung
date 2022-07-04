@@ -1,24 +1,24 @@
+import 'package:bebandung/config/constant.dart';
 import 'package:bebandung/config/global_style.dart';
-import 'package:bebandung/model/food_model.dart';
 import 'package:bebandung/model/user_model.dart';
+import 'package:bebandung/model/wisata_model.dart';
+import 'package:bebandung/model/food_model.dart';
 import 'package:bebandung/ui/reusable_widget.dart';
 import 'package:bebandung/ui/reusable/cache_image_network.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-class DetailFoodPage extends StatefulWidget {
-  final FoodModel food;
-  const DetailFoodPage({
-    Key? key,
-    required this.food,
-  }) : super(key: key);
+class DetailRestaurantPage extends StatefulWidget {
+  final WisataModel wisata;
+  const DetailRestaurantPage({Key? key, required this.wisata})
+      : super(key: key);
 
   @override
-  _DetailFoodPageState createState() => _DetailFoodPageState();
+  _DetailRestaurantPageState createState() => _DetailRestaurantPageState();
 }
 
-class _DetailFoodPageState extends State<DetailFoodPage> {
+class _DetailRestaurantPageState extends State<DetailRestaurantPage> {
   // initialize reusable widget
   final _reusableWidget = ReusableWidget();
 
@@ -27,6 +27,9 @@ class _DetailFoodPageState extends State<DetailFoodPage> {
   bool _showAppBar = false;
 
   late ScrollController _scrollController;
+
+  List<FoodModel> _foodData = [];
+  List<FoodModel> listFoods = [];
 
   final user = FirebaseAuth.instance.currentUser;
   Users? loggedInUser;
@@ -98,7 +101,7 @@ class _DetailFoodPageState extends State<DetailFoodPage> {
                 buildCacheNetworkImage(
                     width: bannerWidth,
                     height: bannerHeight,
-                    url: widget.food.image),
+                    url: widget.wisata.image),
                 _buildDetail(),
               ],
             ),
@@ -117,20 +120,20 @@ class _DetailFoodPageState extends State<DetailFoodPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(widget.food.name!,
+              Text(widget.wisata.name!,
                   style: GlobalStyle.restaurantTitle,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis),
-              getButton(widget.food.name!, loggedInUser!.favouriteFoods!)
+              getButton(widget.wisata.name!, loggedInUser!.favouriteWisata!)
                   ? IconButton(
                       onPressed: () {
                         List food = [];
-                        food.add(widget.food.name);
+                        food.add(widget.wisata.name);
                         FirebaseFirestore.instance
                             .collection('users')
                             .doc(loggedInUser!.id)
                             .update({
-                          "favouriteFoods": FieldValue.arrayRemove(food)
+                          "favouriteWisata": FieldValue.arrayRemove(food)
                         });
                         setState(() {
                           FirebaseFirestore.instance
@@ -150,12 +153,12 @@ class _DetailFoodPageState extends State<DetailFoodPage> {
                   : IconButton(
                       onPressed: () {
                         List food = [];
-                        food.add(widget.food.name);
+                        food.add(widget.wisata.name);
                         FirebaseFirestore.instance
                             .collection('users')
                             .doc(loggedInUser!.id)
                             .update({
-                          "favouriteFoods": FieldValue.arrayUnion(food)
+                          "favouriteWisata": FieldValue.arrayUnion(food)
                         });
                         setState(() {
                           FirebaseFirestore.instance
@@ -175,8 +178,8 @@ class _DetailFoodPageState extends State<DetailFoodPage> {
         SizedBox(height: 4),
         Container(
           margin: EdgeInsets.symmetric(horizontal: 16),
-          child: Text('Harga +- ${widget.food.price!.toString()}',
-              style: GlobalStyle.restaurantTag),
+          child:
+              Text(widget.wisata.location!, style: GlobalStyle.restaurantTag),
         ),
         SizedBox(height: 8),
         Container(
@@ -186,7 +189,8 @@ class _DetailFoodPageState extends State<DetailFoodPage> {
               Text('Rating', style: GlobalStyle.textRatingDistances),
               Icon(Icons.star, color: Colors.orange, size: 15),
               SizedBox(width: 2),
-              Text(widget.food.rating!, style: GlobalStyle.textRatingDistances),
+              Text(widget.wisata.rating!,
+                  style: GlobalStyle.textRatingDistances),
             ],
           ),
         ),
@@ -194,7 +198,7 @@ class _DetailFoodPageState extends State<DetailFoodPage> {
         Container(
           margin: EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            widget.food.description!,
+            widget.wisata.description!,
             textAlign: TextAlign.justify,
             maxLines: readMore ? 20 : 3,
             overflow: readMore ? TextOverflow.visible : TextOverflow.ellipsis,
